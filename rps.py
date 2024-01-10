@@ -33,7 +33,7 @@ class Game():
         self.stage = 0
         self.untilAgree = [False, False] # whether these players have agreed on "until" or not
 
-    def updatePlayer(self, name, playeridx):
+    def updatePlayer(self, name, playeridx): # this has nothign to do with notUpdated. I should rename these variables.
         self.players[playeridx] = Player(name)
         self.names[playeridx] = name
         for i in self.players:

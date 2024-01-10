@@ -35,6 +35,14 @@ def name_handler(data, conn, playeridx):
     send_game_status(conn, playeridx)
     return True
 
+def name_end_checker(conn, playeridx):
+    game_status = games.game.getGameStatusForPlayer(playeridx)
+    conn.send(pickle.dumps(game_status))  # send entire game status regardless
+    toend = (game_status[9]) is not None and (game_status[10] is not None) # whether to end the stage or not
+    res = game_status
+    done_stage = 0
+    return toend, res, done_stage
+
 def send_wrapper_status(conn, playeridx):
     wrapper_status = games.getWrapperStatusForPlayer(playeridx)
     conn.send(pickle.dumps(wrapper_status))
@@ -50,6 +58,7 @@ def get_agreement(data, conn, playeridx):
     conn.send(pickle.dumps(wrapper_status))
     return True
 
+# loops and waits for client's response, executes something based on the response if present
 def loop_n_wait(conn, nodata_handler, else_handler, playeridx):
     while True:
         try:
@@ -65,8 +74,6 @@ def loop_n_wait(conn, nodata_handler, else_handler, playeridx):
             break
     return
 
-
-
 # this threaded client feels weird to have like. here. but i think it has to be here
 def threaded_client(conn, playeridx):  # playeridx is the index in player ids
     # stage 0 - get player name set up
@@ -75,6 +82,7 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
     print("sent init message: ", init_message)
     loop_n_wait(conn, send_game_status, name_handler, playeridx)
     print("setup finished for player ", playeridx)
+
     # todo: stage 0.1 - set the desired until (figure out how to get the client info from each)
 
     # stage 1
@@ -104,8 +112,9 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
                     print("ending games")
                     break
                 else:
-                    print("starting new game")
+                    print("starting new game ", playeridx)
                     games.setNewGame()
+                    games.agree = [None, None]
         except socket.error as e:  # don't know what to use other than bare except here..??
             str(e)
             break
@@ -114,7 +123,6 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
 
 
 # accepting connections
-
 currentPlayerIdx = 0  # player id thing for accepting connections
 
 while True:

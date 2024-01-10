@@ -1,4 +1,27 @@
 from network import Network
+import time
+
+def run_stage(stage_name, prompt, stage_end_checker, n): # n is network
+    # idk hwat the args should be yet
+    new_input = True
+    while True:
+        if new_input:
+            user_input = input(prompt)
+            response = n.send(user_input)
+            new_input = False
+        end_stage, res = stage_end_checker(response)
+        if not end_stage:
+            response = n.send(None)
+            print("printing response from stage: ", stage_name)
+            print(response) # this is for debugging
+        else:
+            return res # stage res for using later
+
+def name_stage_end_checker(response):
+    return response[8] == 1, None
+
+def repeat_stage_end_checker(response):
+    return not (None in response), (response[1] and response[0])
 
 def main():
     run = True
@@ -14,17 +37,7 @@ def main():
     init_message = n.init_message
     print(init_message)
 
-    # name setup
-    while True:
-        if new_name:
-            name = input("name: ")
-            response = n.send(name)
-            new_name = False
-        if response[8] == 0:
-            response = n.send(None)
-            print(response)
-        elif response[8] == 1:
-            break
+    run_stage("name setup", "name: ", name_stage_end_checker, n)
 
     # run the game
     while run:
@@ -32,17 +45,33 @@ def main():
             move = input("type move (r/p/s): ")
         else:
             move = None
-        response = n.send(move)  # send the move to server, get game status back (if disconnect, receives None - todo: handle this)
+        response = n.send(move)  # send the move to server, get game status back (if disconnect, receives None)
+        # send something back to acknowledge the game status - this is prob the best way to fix the issue..
+
+
+        if response is None:
+            print("disconnected somehow")
+            break
         prev_round = curr_round
         curr_round = response[5]
-        if not response[0]:
+        print("prev round: ", prev_round)
+        print("curr_round: ", curr_round)
+        if not response[0]: # depends on whether the game status says it's changed before --> dependent on receiving that first game status :/
+            # idea: some sort of handshake to acknowledge receipt??
+            if not new_round:
+                print("new roudn false, response[0] was False (no change reported)")
+            else:
+                print("new roudn true, response[0] was False (no change reported)")
             continue
-        elif curr_round == prev_round:
+        elif curr_round == prev_round: # this is really brittle
             if not new_round:
                 continue
             print("waiting on the other guy")
             new_round = False
         elif response[6]:
+            print("round ended, moves were:")
+            print(response[9], "(you): ", response[1])
+            print(response[10], "(other guy): ", response[2])
             print("game over!")
             print("final scores:")
             print(response[9], "(you): ", response[3])
@@ -51,35 +80,17 @@ def main():
                 print("you won!")
             else:
                 print("you lost!")
-            new_continue = True
-            want_continue = -1
-            while True:
-                if new_continue:
-                    want_continue = input("new round? (y/n): ") # though anything but 'y' is considered n haha
-                    response = n.send(want_continue)
-                    if want_continue != 'y':
-                        break
-                    new_continue = False
-                if None in response:
-                    response = n.send(None)
-                    print("received response")
-                    print(response)
-                elif not response[1]:
-                    want_continue = 'n'
-                    break
-                else:
-                    want_continue = 'y'
-                    break
-            if want_continue != 'y':
-                print("No More Rock Paper Scissors.")
-                break
-            else:
+            want_continue = run_stage("check new round", "new round? (y/n): ", repeat_stage_end_checker, n)
+            if want_continue:
                 print("Starting new game!")
                 curr_round = 0
                 prev_round = 0
                 move = None
                 new_round = True
                 response = None
+            else:
+                print("No More Rock Paper Scissors.")
+                break
         else:
             print("round ended, moves were:")
             print(response[9], "(you): ", response[1])
