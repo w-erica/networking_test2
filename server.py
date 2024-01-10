@@ -15,7 +15,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     s.bind((server, port))
-except socket.error as e:
+except socket.error as e: # i think this is sometimes not working because sometimes the connection doesn't take
     str(e)
 
 s.listen(4)  # 4 connections max, currently trying 2
@@ -25,24 +25,25 @@ print("Waiting for a connection, Server Started")
 thisGame = Game()
 print("started game initialization")
 
+def send_game_status(conn, playeridx):
+    game_status = thisGame.getGameStatusForPlayer(playeridx)
+    conn.send(pickle.dumps(game_status))  # send entire game status regardless
+
 def name_handler(data, conn, playeridx):
     print("received name from player ", playeridx, ": ", data)
     thisGame.updatePlayer(data, playeridx)
-    game_status = thisGame.getGameStatusForPlayer(playeridx)
-    conn.send(pickle.dumps(game_status))  # send entire game
-    print("returning true from name handler")
+    send_game_status(conn, playeridx)
     return True
 
-def loop_n_wait(conn, handler, playeridx):
+
+def loop_n_wait(conn, nodata_handler, else_handler, playeridx):
     while True:
         try:
             data = pickle.loads(conn.recv(2048))
             if not data:
-                game_status = thisGame.getGameStatusForPlayer(playeridx)
-                conn.send(pickle.dumps(game_status))  # send entire game status regardless
-                # keep looping if there is no data received
+                nodata_handler(conn, playeridx)
             else:
-                res = handler(data, conn, playeridx)
+                res = else_handler(data, conn, playeridx)
                 if res:
                     break
         except socket.error as e:  # don't know what to use other than bare except here..
@@ -58,9 +59,10 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
     init_message = "Connected to server, your player index: " + str(playeridx)
     conn.send(pickle.dumps(init_message))
     print("sent init message: ", init_message)
-    loop_n_wait(conn, name_handler, playeridx)
+    loop_n_wait(conn, send_game_status, name_handler, playeridx)
     print("setup finished for player ", playeridx)
     # todo: stage 0.1 - set the desired until (figure out how to get the client info from each)
+
     thisGame.until = 3
     # stage 1
     while True:

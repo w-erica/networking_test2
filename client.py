@@ -1,6 +1,4 @@
 from network import Network
-from player import Player
-import time
 
 def main():
     run = True
@@ -11,8 +9,12 @@ def main():
     new_round = True
     new_name = True
     response = None
-    init_message = n.init_message # print init message
+
+    # print init message
+    init_message = n.init_message
     print(init_message)
+
+    # name setup
     while True:
         if new_name:
             name = input("name: ")
@@ -23,6 +25,8 @@ def main():
             print(response)
         elif response[8] == 1:
             break
+
+    # run the game
     while run:
         if new_round:
             move = input("type move: ")
@@ -41,8 +45,8 @@ def main():
         elif response[6]:
             print("game over!")
             print("final scores:")
-            print("you: ", response[3])
-            print("other guy: ", response[4])
+            print(response[9], "(you): ", response[3])
+            print(response[10], "(other guy): ", response[4])
             if response[7]:
                 print("you won!")
             else:
@@ -50,11 +54,11 @@ def main():
             break
         else:
             print("round ended, moves were:")
-            print("you: ", response[1])
-            print("the other guy: ", response[2])
+            print(response[9], "(you): ", response[1])
+            print(response[10], "(other guy): ", response[2])
             print("=scores=")
-            print("you: ", response[3])
-            print("the other guy: ", response[4])
+            print(response[9], "(you): ", response[3])
+            print(response[10], "(other guy): ", response[4])
             print("==new round==")
             new_round = True
 
