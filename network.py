@@ -2,6 +2,7 @@ import socket
 import time
 import pickle
 
+# Class for connecting client and server - derived in large part from techwithtim's online game tutorial
 
 class Network:
     def __init__(self):
@@ -24,9 +25,8 @@ class Network:
         try:
             self.client.send(pickle.dumps(data))
             reply = self.client.recv(2048) # can never be None otherwise it'll disconnect
-            # just return none
             if reply is None:
-                print("reply is none for some reason!")
+                print("reply is none for some reason! this isn't good!") # for debugging
                 return None
             else:
                 reply = pickle.loads(reply)
@@ -36,10 +36,10 @@ class Network:
         except socket.error as e:
             print(e)
 
-# dunno if should be using this one - no need, right?
+# not using this one at the moment - I'm just using None with the send function.
     def receive(self):
         try:
-            print("receiving?")
+            print("receiving?") # for debugging
             reply = self.client.recv(2048)
             reply = pickle.loads(reply)
             return reply

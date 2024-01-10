@@ -5,21 +5,21 @@ class Player():
         self.hasGone = False
         self.score = 0
         self.roundOn = 0
-        self.notupdated = True
+        self.notUpdated = True
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
     def __str__(self):
         return "Player Named " + self.name
 
-    def resetMove(self):
+    def reset_move(self):
         self.move = 'NO_MOVE'
         self.hasGone = False
 
-    def performMove(self, move_done):
+    def perform_move(self, move_done):
         self.hasGone = True
         self.move = move_done # assuming valid move lol
 
-    def addPoint(self):
+    def add_point(self):
         self.score += 1

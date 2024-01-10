@@ -2,41 +2,40 @@
 
 import socket
 from _thread import *
-import sys
-from player import Player
 import pickle
+from typing import Callable
+
 from rps import *
 
+# setup according to the server and port
 server = "192.168.0.208" #"127.0.0.1" #   # "192.168.86.38"
 port = 5555
 
-# set up socket and connection
+# setup connection
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
 try:
     s.bind((server, port))
-except socket.error as e: # i think this is sometimes not working because sometimes the connection doesn't take
+except socket.error as e: # todo: i think this is sometimes not working because sometimes the connection doesn't take but it just goes on
     str(e)
-
-s.listen(4)  # 4 connections max, currently trying 2
+s.listen(2)  # 2 connections max
 print("Waiting for a connection, Server Started")
 
-# new Game Wrapper object
+# define new GameWrapper object
 games = GameWrapper()
-print("started game initialization")
+print("Started game initialization")
 
 def send_game_status(conn, playeridx):
-    game_status = games.game.getGameStatusForPlayer(playeridx)
+    game_status = games.game.get_game_status_for_player(playeridx)
     conn.send(pickle.dumps(game_status))  # send entire game status regardless
 
 def name_handler(data, conn, playeridx):
     print("received name from player ", playeridx, ": ", data)
-    games.game.updatePlayer(data, playeridx)
+    games.game.update_player_name(data, playeridx)
     send_game_status(conn, playeridx)
     return True
 
 def name_end_checker(conn, playeridx):
-    game_status = games.game.getGameStatusForPlayer(playeridx)
+    game_status = games.game.get_game_status_for_player(playeridx)
     conn.send(pickle.dumps(game_status))  # send entire game status regardless
     toend = (game_status[9]) is not None and (game_status[10] is not None) # whether to end the stage or not
     res = game_status
@@ -44,7 +43,7 @@ def name_end_checker(conn, playeridx):
     return toend, res, done_stage
 
 def send_wrapper_status(conn, playeridx):
-    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+    wrapper_status = games.get_wrapper_status_for_player(playeridx)
     conn.send(pickle.dumps(wrapper_status))
 
 def get_agreement(data, conn, playeridx):
@@ -54,85 +53,101 @@ def get_agreement(data, conn, playeridx):
         games.agree[playeridx] = True
     else:
         games.agree[playeridx] = False
-    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+    wrapper_status = games.get_wrapper_status_for_player(playeridx)
     conn.send(pickle.dumps(wrapper_status))
     return True
 
 # loops and waits for client's response, executes something based on the response if present
-def loop_n_wait(conn, nodata_handler, else_handler, playeridx):
+def loop_n_wait(conn: socket.socket, nodata_handler: Callable[[socket.socket, int], None],
+                else_handler: Callable[[str, socket.socket, int], bool], p_idx: int) -> None:
+    """ Wait for client response and once it arrives, execute something based on the response
+    :param conn: socket for this player's client
+    :param nodata_handler: function to run if no data is available
+    :param else_handler: function to run once data is available, takes the data
+        (may or may not be string but idk now to change it) as parameter, returns whether to stop looping or not
+    :param p_idx: index for this player
+    """
     while True:
         try:
             data = pickle.loads(conn.recv(2048))
             if not data:
-                nodata_handler(conn, playeridx)
+                nodata_handler(conn, p_idx)
             else:
-                res = else_handler(data, conn, playeridx)
+                res = else_handler(data, conn, p_idx)
                 if res:
                     break
-        except socket.error as e:  # don't know what to use other than bare except here..
+        except socket.error as e:
             str(e)
             break
     return
 
+
 # this threaded client feels weird to have like. here. but i think it has to be here
-def threaded_client(conn, playeridx):  # playeridx is the index in player ids
+def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # playeridx is the index in player ids
+    """ Play game. 
+    :param client_conn: connection
+    :param player_idx: index for this player"""
     # stage 0 - get player name set up
-    init_message = "Connected to server, your player index: " + str(playeridx)
-    conn.send(pickle.dumps(init_message))
-    print("sent init message: ", init_message)
-    loop_n_wait(conn, send_game_status, name_handler, playeridx)
-    print("setup finished for player ", playeridx)
+    init_message = "Connected to server, your player index: " + str(player_idx)
+    client_conn.send(pickle.dumps(init_message))
+    print("sent init message: ", init_message) # for debugging?
+    loop_n_wait(client_conn, send_game_status, name_handler, player_idx)
+    print("setup finished for player ", player_idx) # for debugging? or maybe to keep
 
-    # todo: stage 0.1 - set the desired until (figure out how to get the client info from each)
+    # todo: stage 0.1 - set the desired until (value until which the game is played)
+    # (figure out how to get the client info from each)
 
-    # stage 1
+    # stage 1 - actual game
     while True:
         try:
-            data = pickle.loads(conn.recv(2048))
+            data = pickle.loads(client_conn.recv(2048))
             if not data:
                 pass  # keep looping if there is no data received
             elif data == "DISCONNECT":
-                print("disconnect received from player idx: ", playeridx)
+                print("disconnect received from player idx: ", player_idx)
                 break
             else:
                 print("Received Move: ", data)
-                games.game.updateGame(playeridx, data)  # perform move
-                print("updated game state", playeridx)
-            game_status = games.game.getGameStatusForPlayer(playeridx)
-            conn.send(pickle.dumps(game_status))  # send entire game status regardless
+                games.game.update_game(player_idx, data)  # perform move
+                print("updated game state", player_idx)
+            game_status = games.game.get_game_status_for_player(player_idx)
+            client_conn.send(pickle.dumps(game_status))  # send entire game status regardless
             if game_status[6]:
                 print("game is over!")
-                loop_n_wait(conn, send_wrapper_status, get_agreement, playeridx)
-                wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+                # get whether player wants to continue with another round or not - i wanted to make this a separate
+                # modular function but got confused
+                loop_n_wait(client_conn, send_wrapper_status, get_agreement, player_idx)
+                wrapper_status = games.get_wrapper_status_for_player(player_idx)
                 while None in wrapper_status:
-                    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
-                    conn.send(pickle.dumps(wrapper_status))
+                    wrapper_status = games.get_wrapper_status_for_player(player_idx)
+                    client_conn.send(pickle.dumps(wrapper_status))
                     print("wrapper status: ", wrapper_status)
                 if False in wrapper_status:
                     print("ending games")
                     break
                 else:
-                    print("starting new game ", playeridx)
-                    games.setNewGame()
+                    print("starting new game ", player_idx)
+                    games.set_new_game()
                     games.agree = [None, None]
-        except socket.error as e:  # don't know what to use other than bare except here..??
-            str(e)
+        except socket.error as exception:
+            str(exception)
             break
     print("No more connection")
-    conn.close()
+    client_conn.close()
 
 
 # accepting connections
-currentPlayerIdx = 0  # player id thing for accepting connections
+curr_p_idx = 0  # player id thing for accepting connections
 
 while True:
-    if currentPlayerIdx < 2:
+    if curr_p_idx < 2:
         conn, addr = s.accept()  # i guess this is what connects a new network to a server
+        print(type(conn))
         print("Connected to: ", addr)
-        print(currentPlayerIdx)
+        print(curr_p_idx)
         # you start a new thread for every player
-        start_new_thread(threaded_client, (conn, currentPlayerIdx))  # todo: figure out what start_new_thread does
-        currentPlayerIdx += 1
+        start_new_thread(threaded_client, (conn, curr_p_idx))  # todo: figure out what start_new_thread does
+        curr_p_idx += 1
     # else:
     #     print("another guy tried to connect, refused connection")
 
