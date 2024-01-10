@@ -5,7 +5,7 @@ from _thread import *
 import sys
 from player import Player
 import pickle
-from rps import Game
+from rps import *
 
 server = "192.168.0.208" #"127.0.0.1" #   # "192.168.86.38"
 port = 5555
@@ -21,20 +21,34 @@ except socket.error as e: # i think this is sometimes not working because someti
 s.listen(4)  # 4 connections max, currently trying 2
 print("Waiting for a connection, Server Started")
 
-# new Game object
-thisGame = Game()
+# new Game Wrapper object
+games = GameWrapper()
 print("started game initialization")
 
 def send_game_status(conn, playeridx):
-    game_status = thisGame.getGameStatusForPlayer(playeridx)
+    game_status = games.game.getGameStatusForPlayer(playeridx)
     conn.send(pickle.dumps(game_status))  # send entire game status regardless
 
 def name_handler(data, conn, playeridx):
     print("received name from player ", playeridx, ": ", data)
-    thisGame.updatePlayer(data, playeridx)
+    games.game.updatePlayer(data, playeridx)
     send_game_status(conn, playeridx)
     return True
 
+def send_wrapper_status(conn, playeridx):
+    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+    conn.send(pickle.dumps(wrapper_status))
+
+def get_agreement(data, conn, playeridx):
+    print("player: ", playeridx, " agreement: ", data)
+    # the following should be in the game wrapper lol.
+    if data == 'y':
+        games.agree[playeridx] = True
+    else:
+        games.agree[playeridx] = False
+    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+    conn.send(pickle.dumps(wrapper_status))
+    return True
 
 def loop_n_wait(conn, nodata_handler, else_handler, playeridx):
     while True:
@@ -63,7 +77,6 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
     print("setup finished for player ", playeridx)
     # todo: stage 0.1 - set the desired until (figure out how to get the client info from each)
 
-    thisGame.until = 3
     # stage 1
     while True:
         try:
@@ -75,13 +88,24 @@ def threaded_client(conn, playeridx):  # playeridx is the index in player ids
                 break
             else:
                 print("Received Move: ", data)
-                thisGame.updateGame(playeridx, data)  # perform move
+                games.game.updateGame(playeridx, data)  # perform move
                 print("updated game state", playeridx)
-            game_status = thisGame.getGameStatusForPlayer(playeridx)
+            game_status = games.game.getGameStatusForPlayer(playeridx)
             conn.send(pickle.dumps(game_status))  # send entire game status regardless
             if game_status[6]:
                 print("game is over!")
-                break
+                loop_n_wait(conn, send_wrapper_status, get_agreement, playeridx)
+                wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+                while None in wrapper_status:
+                    wrapper_status = games.getWrapperStatusForPlayer(playeridx)
+                    conn.send(pickle.dumps(wrapper_status))
+                    print("wrapper status: ", wrapper_status)
+                if False in wrapper_status:
+                    print("ending games")
+                    break
+                else:
+                    print("starting new game")
+                    games.setNewGame()
         except socket.error as e:  # don't know what to use other than bare except here..??
             str(e)
             break

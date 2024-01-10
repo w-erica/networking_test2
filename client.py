@@ -29,7 +29,7 @@ def main():
     # run the game
     while run:
         if new_round:
-            move = input("type move: ")
+            move = input("type move (r/p/s): ")
         else:
             move = None
         response = n.send(move)  # send the move to server, get game status back (if disconnect, receives None - todo: handle this)
@@ -51,7 +51,35 @@ def main():
                 print("you won!")
             else:
                 print("you lost!")
-            break
+            new_continue = True
+            want_continue = -1
+            while True:
+                if new_continue:
+                    want_continue = input("new round? (y/n): ") # though anything but 'y' is considered n haha
+                    response = n.send(want_continue)
+                    if want_continue != 'y':
+                        break
+                    new_continue = False
+                if None in response:
+                    response = n.send(None)
+                    print("received response")
+                    print(response)
+                elif not response[1]:
+                    want_continue = 'n'
+                    break
+                else:
+                    want_continue = 'y'
+                    break
+            if want_continue != 'y':
+                print("No More Rock Paper Scissors.")
+                break
+            else:
+                print("Starting new game!")
+                curr_round = 0
+                prev_round = 0
+                move = None
+                new_round = True
+                response = None
         else:
             print("round ended, moves were:")
             print(response[9], "(you): ", response[1])

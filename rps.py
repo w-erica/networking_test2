@@ -2,13 +2,21 @@ from player import Player
 
 class GameWrapper():
     def __init__(self):
-        self.game = None
-        self.gameNum = 0
-        self.players = [None, None]
-        self.names = [None, None]
-    def setFirstGame(self):
         self.game = Game()
+        self.game.until = 3
+        self.gameNum = 0
+        self.names = [None, None]
+        self.agree = [None, None]
     def setNewGame(self):
+        self.names = self.game.names
+        self.game = Game()
+        self.game.until = 3 # until i can figure out a better way
+        for i in range(len(self.names)):
+            self.game.updatePlayer(self.names[i], i)
+        return
+    def getWrapperStatusForPlayer(self, playerIdx):
+        opp_idx = 1 - playerIdx
+        return self.agree[playerIdx], self.agree[opp_idx]
 
 class Game():
     def __init__(self):
