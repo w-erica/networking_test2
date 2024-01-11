@@ -101,14 +101,17 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
     while True:
         try:
             data = pickle.loads(client_conn.recv(2048))
+            print("received from ", player_idx, ": ", data)
             if not data:
                 pass  # keep looping if there is no data received
             elif data == "DISCONNECT":
                 print("disconnect received from player idx: ", player_idx)
                 break
-            else:
-                print("Received Move: ", data)
-                games.game.update_game(player_idx, data)  # perform move
+            elif data[1]: # make this whether the player has been updated or not. should be separate from the move.
+                games.game.mark_updated(player_idx)
+            elif data[0]:
+                print("Received Move: ", data[0])
+                games.game.update_game(player_idx, data[0])  # perform move
                 print("updated game state", player_idx)
             game_status = games.game.get_game_status_for_player(player_idx)
             client_conn.send(pickle.dumps(game_status))  # send entire game status regardless
@@ -118,10 +121,10 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
                 # modular function but got confused
                 loop_n_wait(client_conn, send_wrapper_status, get_agreement, player_idx)
                 wrapper_status = games.get_wrapper_status_for_player(player_idx)
+                print("wrapper status: ", wrapper_status)
                 while None in wrapper_status:
                     wrapper_status = games.get_wrapper_status_for_player(player_idx)
                     client_conn.send(pickle.dumps(wrapper_status))
-                    print("wrapper status: ", wrapper_status)
                 if False in wrapper_status:
                     print("ending games")
                     break

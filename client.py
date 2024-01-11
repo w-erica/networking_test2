@@ -35,11 +35,15 @@ def run_stage(stage_name: str, prompt: str, stage_end_checker: Callable[[tuple],
 
 def name_stage_end_checker(response: tuple) -> tuple:
     ''' :returns: whether to end the name stage. '''
+    if response is None:
+        return False, False
     return response[8] == 1, True # 2nd return val isn't actually used at all
 
 
 def repeat_stage_end_checker(response: tuple) -> tuple:
     ''' :returns: whether to end the "new game?" stage, and also whether there will be new game or not. '''
+    if response is None:
+        return False, False
     return not (None in response), (response[1] and response[0])
 
 
@@ -66,9 +70,8 @@ def main():
                 move = input("type move (r/p/s): ")
         else:
             move = None
-        response = n.send(move)  # send the move to server, get game status back (if disconnect, receives None)
+        response = n.send((move, False))  # send the move to server, get game status back (if disconnect, receives None)
         # todo: send something back to acknowledge the game status?? - this is prob the best way to fix the issue..
-
         if response is None:
             print("Disconnected from server.")
             break
@@ -76,17 +79,13 @@ def main():
         curr_round = response[5]
         # print("prev round: ", prev_round) # for debugging
         # print("curr_round: ", curr_round) # for debugging
-        if not response[0]:  # depends on whether the game status says it's changed before --> dependent on receiving that first game status :/
-            # # for debugging:
-            # if not new_round:
-            #     print("new roudn false, response[0] was False (no change reported)")
-            # else:
-            #     print("new roudn true, response[0] was False (no change reported)")
+        if not response[0]:
             continue
         elif curr_round == prev_round:
             if not new_round:
                 continue
             print("Waiting on other player")
+            n.send((None, True))
             new_round = False
         elif response[6]:
             print("round ended, moves were:")
@@ -119,6 +118,7 @@ def main():
             print(response[9], "(you): ", response[3])
             print(response[10], "(other guy): ", response[4])
             print("==new round==")
+            n.send((None, True))
             new_round = True
 
 

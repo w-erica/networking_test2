@@ -1,6 +1,8 @@
 # second version of client
 # is a "bot" that plays randomly (what is the definition of a bot anyways?)
 
+# not currently working.
+
 from network import Network
 import numpy as np
 from typing import Callable
@@ -26,8 +28,8 @@ def run_stage(stage_name: str, bot_input: str, stage_end_checker: Callable[[tupl
         end_stage, res = stage_end_checker(response)
         if not end_stage:
             response = n.send(None)
-            print("printing response from stage: ", stage_name) # for debugging
-            print(response)  # for debugging
+            if not response:
+                continue
         else:
             return res  # stage res for using later
 

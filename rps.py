@@ -81,10 +81,15 @@ class Game:
             9: current player's name, 10: opponent's name"""
         opp_idx = 1 - p_idx
         has_changed = self.notUpdated[p_idx]
-        self.notUpdated[p_idx] = False
         return has_changed, self.oldMoves[p_idx], self.oldMoves[opp_idx], \
             self.scores[p_idx], self.scores[opp_idx], self.round, self.hasEnded, \
             (self.winner == p_idx), self.stage, self.names[p_idx], self.names[opp_idx]
+
+    def mark_updated(self, p_idx: int):
+        """ Mark player as updated (with latest information) """
+        self.notUpdated[p_idx] = False
+        return
+
 
     def update_game(self, p_idx: int, move: str) -> None:
         """ Update game based on move done by player
