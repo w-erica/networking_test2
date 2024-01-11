@@ -2,6 +2,7 @@ from typing import Callable
 
 from network import Network
 import time
+import argparse
 
 rps = ['r', 'p', 's']
 # helper to run a stage of the game
@@ -121,5 +122,15 @@ def main():
             new_round = True
 
 
+def dummy():
+    print("hello world!")
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Client for rock paper scissors.')
+    #parser.add_argument('') # add arguments for flags for client
+    parser.add_argument('--dummy', dest='main_func', action='store_const', # why is it 2 dashes?
+                        const=dummy, default=main,
+                        help='set client (default: interact with a human)')
+    args = parser.parse_args()
+    args.main_func()
+    # main()
