@@ -7,14 +7,16 @@ import socket
 
 rps = ['r', 'p', 's']
 
+
 def stage0_handler(game_info: tuple):
-    print("game info received: ", game_info)
+    if debug:
+        print("DEBUG: ", "game info received: ", game_info)
     action = None
     if game_info[6]:
-        print("round ended, moves were:")
+        print("trick ended, moves were:")
         print(game_info[9], "(you): ", game_info[1])
         print(game_info[10], "(other guy): ", game_info[2])
-        print("ending the game")
+        print("ending the round")
         if game_info[7]:
             print("you won!")
         else:
@@ -22,17 +24,35 @@ def stage0_handler(game_info: tuple):
         action = "DISCONNECT"
     elif game_info[12]:  # if both have gone
         if game_info[5] > 0:
-            print("round ended, moves were:")
+            print("trick ended, moves were:")
             print(game_info[9], "(you): ", game_info[1])
             print(game_info[10], "(other guy): ", game_info[2])
             print("=scores=")
             print(game_info[9], "(you): ", game_info[3])
             print(game_info[10], "(other guy): ", game_info[4])
-            print("==new round==")
+            print("==new trick==")
         action = input("stage 0 input (r/p/s): ")
+        while action not in rps:
+            print("Move must be one of: r/p/s")
+            action = input("stage 0 input (r/p/s): ")
     if not game_info[12]:  # if both have not gone
         print("waiting on the other guy")
     return action
+
+
+def name_stage_handler(game_info: tuple):
+    if debug:
+        print("DEBUG: ", "game info received: ", game_info)
+    action = None
+    if game_info[0]: # if received from the current guy yet
+        if debug:
+            print("DEBUG: waiting on the other guy's name")
+        return None
+    else: # not received from the current guy
+        action = input("type name: ")
+        return action
+
+
 
 def main():
     # set up game status variables
@@ -44,22 +64,33 @@ def main():
     # print init message
     init_message = n.init_message
     print(init_message)
+    if init_message is None:
+        print("there is an issue with connecting! ending now.")
+        return
 
     game_status = n.send(None)
     while True:
+        action = None
         try:
             if local_status != game_status:
                 local_status = game_status
                 if game_status is None:
-                    print("disconnecting client side")
+                    print("disconnecting client side - None game status received")
                     break
                 elif game_status[0] == 0:
                     action = stage0_handler(game_status[1]) # some action to take if the game status is some typa way. NO LOOPS PLEASE
-                    game_status = n.send(action)
+                elif game_status[0] == 1:
+                    action = name_stage_handler(game_status[1])
+                elif game_status[0] == -1:
+                    print("Waiting for other players to connect")
+                game_status = n.send(action)
+                if action == "DISCONNECT":
+                    print("ending game!")
+                    break
             else:
                 game_status = n.send(None)
                 continue
-        except socket.error as e:
+        except Exception as e:
             str(e)
             break
 
@@ -183,9 +214,12 @@ def dummy():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Client for rock paper scissors.')
     #parser.add_argument('') # add arguments for flags for client
-    parser.add_argument('--dummy', dest='main_func', action='store_const', # why is it 2 dashes?
+    parser.add_argument('--dummy', dest='main_func', action='store_const', # prob doesn't have to be 2 dashes but w/e
                         const=dummy, default=main,
                         help='set client (default: interact with a human)')
+    parser.add_argument('--debug', dest='debug_flag', action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
+    debug = args.debug_flag # whether to print the debugging related messages or not
+    print(debug)
     args.main_func()
     # main()

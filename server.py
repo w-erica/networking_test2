@@ -21,11 +21,11 @@ s.listen(2)  # 2 connections max
 print("Waiting for a connection, Server Started")
 
 # define new GameWrapper object
-games = GameWrapper()
+game = GameWrapper()
 print("Started game initialization")
 
 # def send_game_status(conn, playeridx):
-#     game_status = games.game.get_game_status_for_player(playeridx)
+#     game_status = games.game.get_round_status_for_player(playeridx)
 #     conn.send(pickle.dumps(game_status))  # send entire game status regardless
 #
 # def name_handler(data, conn, playeridx):
@@ -35,7 +35,7 @@ print("Started game initialization")
 #     return True
 #
 # def name_end_checker(conn, playeridx):
-#     game_status = games.game.get_game_status_for_player(playeridx)
+#     game_status = games.game.get_round_status_for_player(playeridx)
 #     conn.send(pickle.dumps(game_status))  # send entire game status regardless
 #     toend = (game_status[9]) is not None and (game_status[10] is not None) # whether to end the stage or not
 #     res = game_status
@@ -43,7 +43,7 @@ print("Started game initialization")
 #     return toend, res, done_stage
 #
 # def send_wrapper_status(conn, playeridx):
-#     wrapper_status = games.get_wrapper_status_for_player(playeridx)
+#     wrapper_status = games.get_game_status_for_player(playeridx)
 #     conn.send(pickle.dumps(wrapper_status))
 #
 # def get_agreement(data, conn, playeridx):
@@ -53,7 +53,7 @@ print("Started game initialization")
 #         games.agree[playeridx] = True
 #     else:
 #         games.agree[playeridx] = False
-#     wrapper_status = games.get_wrapper_status_for_player(playeridx)
+#     wrapper_status = games.get_game_status_for_player(playeridx)
 #     conn.send(pickle.dumps(wrapper_status))
 #     return True
 #
@@ -90,12 +90,16 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
     :param player_idx: index for this player"""
     # send initial message
     init_message = "Connected to server, your player index: " + str(player_idx)
+
     client_conn.send(pickle.dumps(init_message))
     print("sent init message: ", init_message) # for debugging?
+
+    game.update_connected(player_idx) # send that a certain player has connected
+
     # actual game stage
     while True:
         try:
-            game_status = games.get_wrapper_status_for_player(player_idx)
+            game_status = game.get_game_status_for_player(player_idx)
             action = pickle.loads(client_conn.recv(2048)) # this is the action from the player
             print("received from ", player_idx, ": ", action)
             if not action:
@@ -103,15 +107,17 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
             elif action == "DISCONNECT":
                 print("disconnect received from player idx: ", player_idx)
                 client_conn.send(pickle.dumps((-1, "DISCONNECTING")))
-                break
             elif action:
                 if game_status[0] == 0: # what to server side if the game status is 0 and an action has been received
                     print("Received Move: ", action)
-                    games.game.update_game(player_idx, action)  # perform move
+                    game.round.update_round(player_idx, action)  # perform move
                     print("updated game state", player_idx)
-                game_status = games.get_wrapper_status_for_player(player_idx)
+                if game_status[0] == 1: # name section
+                    print("Received Name: ", action)
+                    game.update_player_name(action, player_idx)
+                game_status = game.get_game_status_for_player(player_idx)
             client_conn.send(pickle.dumps(game_status))  # send entire game status regardless
-            if game_status[1][6]:
+            if (game_status[0] == 0 and game_status[1][6]):
                 print("game (round) is over! no more")
                 client_conn.send(pickle.dumps(game_status))  # send entire game status regardless
                 # break??
@@ -120,7 +126,6 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
             break
     print("No more connection")
     client_conn.close()
-
 
 # accepting connections
 curr_p_idx = 0  # player id thing for accepting connections
