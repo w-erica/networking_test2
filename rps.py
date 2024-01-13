@@ -9,6 +9,7 @@ class GameWrapper:
         self.gameNum = 0  # this .. i think is not actually used
         self.names = [None, None]  # names of each player
         self.agree = [None, None]  # whether each player has agreed to another round
+        self.stage = 0
 
     def set_new_game(self):
         """ Set up new game (after the first game) """
@@ -23,7 +24,12 @@ class GameWrapper:
         """ What it says on the tin.
         :param player_idx: index of the player """
         opp_idx = 1 - player_idx
-        return self.agree[player_idx], self.agree[opp_idx]
+        # only for stage 0 now
+        stage_info = self.game.get_game_status_for_player(player_idx)
+        # if self.stage == 0:
+        #     if stage_info[6]:
+        #         self.stage = -1
+        return self.stage, stage_info
 
 
 class Game:
@@ -32,7 +38,7 @@ class Game:
         self.players = [Player(None), Player(None)]  # player objects
         self.names = [None, None]  # names of players
         self.hasEnded = False  # whether the game has ended
-        self.bothGone = False  # whether both players have gone (i suspect this is not used)
+        self.bothGone = True  # whether both players have gone (i suspect this is not used)
         self.until = -1  # goal of the game (to be set later)
         self.winner = -1  # winner of the game
         self.round = 0  # how many rounds are done (this is important)
@@ -78,12 +84,14 @@ class Game:
             1: current player's move (prev round, for printing purposes), 2: opponent's move (prev round, for printing
             purposes, 3: current player's score, 4: opponent's score, 5: current round (broken-ish but not as much
             as 0), 6: whether the game has ended, 7: whether the winner is the current player, 8: the stage of the game,
-            9: current player's name, 10: opponent's name"""
+            9: current player's name, 10: opponent's name, 11: whether this player has gone,
+            12: whether both players have gone"""
         opp_idx = 1 - p_idx
         has_changed = self.notUpdated[p_idx]
         return has_changed, self.oldMoves[p_idx], self.oldMoves[opp_idx], \
             self.scores[p_idx], self.scores[opp_idx], self.round, self.hasEnded, \
-            (self.winner == p_idx), self.stage, self.names[p_idx], self.names[opp_idx]
+            (self.winner == p_idx), self.stage, self.names[p_idx], self.names[opp_idx], \
+            self.players[p_idx].hasGone, self.bothGone
 
     def mark_updated(self, p_idx: int):
         """ Mark player as updated (with latest information) """
