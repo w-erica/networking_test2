@@ -7,6 +7,9 @@ import socket
 import numpy as np
 
 rps = ['r', 'p', 's']
+user_input = True
+random_input = False
+algo_input = False # some algorithm i will write that i think works ok
 
 
 # handlers for each stage - NO WHILE LOOPS HERE. TAKES ACTION BASED ON GAME STATUS - ASSUMES STATUS HAS CHANGED SINCE
@@ -33,10 +36,13 @@ def stage0_handler(game_info: tuple):
             print(game_info[9], "(you): ", game_info[3])
             print(game_info[10], "(other guy): ", game_info[4])
             print("==new trick==")
-        action = input("stage 0 input (r/p/s): ")
-        while action not in rps:
-            print("Move must be one of: r/p/s")
+        if user_input:
             action = input("stage 0 input (r/p/s): ")
+            while action not in rps:
+                print("Move must be one of: r/p/s")
+                action = input("stage 0 input (r/p/s): ")
+        if random_input:
+            action = rps[np.random.randint(3)]
     if not game_info[12]:  # if both have not gone
         print("waiting on the other guy")
     return action
@@ -51,22 +57,27 @@ def name_stage_handler(game_info: tuple):
             print("DEBUG: waiting on the other guy's name")
         return None
     else:  # not received from the current guy
-        action = input("type name: ")
+        if user_input:
+            action = input("type name: ")
+        elif random_input:
+            action = "random boss"
         return action
 
 
 def another_round_handler(game_info: tuple):
     action = None
-    print("game info in another orund handler: ", game_info)
     if game_info[1] is not None:
         if not game_info[1]:
             print("Opponent does not want another round!")
             return "DISCONNECT"
     if game_info[0] is None:
-        action = input("Another round? (y/n): ")
-        while action not in ['y', 'n']:
-            print("Please indicate y or n")
+        if user_input:
             action = input("Another round? (y/n): ")
+            while action not in ['y', 'n']:
+                print("Please indicate y or n")
+                action = input("Another round? (y/n): ")
+        else:
+            action = "y"
         return action
 
 
@@ -82,22 +93,17 @@ def main():
     init_message = n.init_message
     print(init_message)
     if init_message is None:
-        print("there is an issue with connecting! ending now.")
+        print("There is an issue with connecting! Ending now.")
         return
 
     game_status = n.send(None)
     while True:
         action = None
         try:
-            if local_status == game_status:
-                if debug:
-                    print(local_status)
             if local_status != game_status:
-                if debug:
-                    print('CHANGED TO')
-                    print(game_status)
                 local_status = game_status
-                print("boht connection: ", game_status[2])
+                if debug:
+                    print("Both connection: ", game_status[2])
                 if game_status is None:
                     if debug:
                         print("DEBUG: disconnecting client side - None game status received")
@@ -136,8 +142,20 @@ if __name__ == "__main__":
     parser.add_argument('--dummy', dest='main_func', action='store_const',  # 2 dashes is for long flag
                         const=dummy, default=main,
                         help='set client (default: interact with a human)')
-    parser.add_argument('--debug', dest='debug_flag', action=argparse.BooleanOptionalAction)
+    parser.add_argument('--debug', dest='debug_flag', action=argparse.BooleanOptionalAction,
+                        help='print debugging output')
+    parser.add_argument('--random', dest='random_flag', action=argparse.BooleanOptionalAction,
+                        help='automatically choose randomly r,p, or s')
+    parser.add_argument('--algo', dest='algo_flag', action=argparse.BooleanOptionalAction,
+                        help='run algo erica wrote :)')
     args = parser.parse_args()
+
     debug = args.debug_flag  # whether to print the debugging related messages or not
+
+    # set up bools for behavior from flags
+    random_input = args.random_flag
+    algo_input = (not random_input) and args.algo_flag
+    user_input = (not random_input) and (not algo_input)
+
     print(debug)
     args.main_func()

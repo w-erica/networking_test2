@@ -10,11 +10,10 @@ use:
 
 some notes:
 
-- hit ctrl+C to finish the server script (reason why is currently I do not know how to terminate the server nicely 
-after both clients finish (best I can do now has peer disconnected or similar, and that doesn't seem great)
 - there are some additional options for client.py (for running different bot version, displaying debug output, etc.)
 
 client.py options:
 
 - `--debug`: print some extra debugging outputs
 - `--random`: run a random bot instead of taking user input
+- `--algo`: run an algo for rps that I write :) (not implemented yet)

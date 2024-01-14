@@ -43,8 +43,6 @@ def threaded_client(client_conn: socket.socket, player_idx: int) -> None:  # pla
         try:
             game_status = game.get_game_status_for_player(player_idx)
             action = pickle.loads(client_conn.recv(2048))  # this is the action from the player
-            if action:
-                print("received from ", player_idx, ": ", action)
             if not action:
                 pass  # keep looping if there is no action received
             elif action == "DISCONNECT":
