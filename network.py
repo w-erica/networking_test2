@@ -36,6 +36,10 @@ class Network:
         except socket.error as e:
             print(e)
 
+    def close(self):
+        self.client.close()
+        return
+
 # not using this one at the moment - I'm just using None with the send function.
     def receive(self):
         try:

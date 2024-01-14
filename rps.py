@@ -9,8 +9,9 @@ class GameWrapper:
         self.roundNum = 0  # this is not actually used
         self.roundScores = [0, 0]
         self.names = [None, None]  # names of each player
-        self.agree = [None, None]  # whether each player has agreed to another round
+        self.agree_continue = [None, None]  # whether each player has agreed to another round
         self.connected = [False, False]
+        self.bothConnectedLater = True # starts off true bc neither are connected to start
         self.stage = -1
 
     def set_new_round(self):
@@ -23,8 +24,8 @@ class GameWrapper:
         self.roundNum += 1
         return
 
-    def update_player_name(self, name: str,
-                           p_idx: int) -> None:  # this has nothing to do with notUpdated. I should rename these variables.
+    # handlers to update things within each game stages (the other one is update_round (within the round thing..))
+    def update_player_name(self, name: str, p_idx: int) -> None:
         """ What it says on the tin.
         :param name: desired player name
         :param p_idx: player index of the player to change the name of"""
@@ -37,13 +38,31 @@ class GameWrapper:
         self.stage = 0
         print("stage 1 (name) finished, stage 0 (game round) begun")
 
-    def update_connected(self, player_idx):
-        self.connected[player_idx] = True
+    def update_connected(self, connect: bool, player_idx: int):
+        self.connected[player_idx] = connect
         for i in self.connected:
             if not i:
                 return
-        self.stage = 1 # move to name stage
+        self.bothConnectedLater = True
+        self.stage = 1  # move to name stage
 
+    def update_continue(self, agreement: str, player_idx: int):
+        if agreement not in ["y", "n"]:
+            print("wrong agreement input: ", agreement)
+            return
+        self.agree_continue[player_idx] = (agreement == "y")
+        for i in self.agree_continue:
+            if not i:
+                return
+            if i == "n":
+                self.bothConnectedLater = False
+                print("setting self both connected later to false")
+                return
+        self.stage = 0
+        self.agree_continue = [None, None]
+        self.set_new_round()
+
+    # gets game status to send to client
     def get_game_status_for_player(self, player_idx):
         """ What it says on the tin.
         :param player_idx: index of the player """
@@ -56,7 +75,9 @@ class GameWrapper:
             stage_info = ((self.names[player_idx] is not None), (self.names[opp_idx] is not None))
         elif self.stage == -1:
             stage_info = (self.connected[player_idx], self.connected[opp_idx])
-        return self.stage, stage_info
+        elif self.stage == 2:
+            stage_info = (self.agree_continue[player_idx], self.agree_continue[opp_idx])
+        return self.stage, stage_info, self.bothConnectedLater
 
 
 class Round:
@@ -112,7 +133,7 @@ class Round:
         return
 
 
-    def update_round(self, p_idx: int, move: str) -> None:
+    def update_round(self, move: str, p_idx: int) -> None:
         """ Update round based on move done by player
         :param p_idx: Current player index
         :param move: the move done """
