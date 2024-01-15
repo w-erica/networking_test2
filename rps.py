@@ -66,6 +66,7 @@ class GameWrapper:
     def get_game_status_for_player(self, player_idx):
         """ What it says on the tin.
         :param player_idx: index of the player """
+        # todo: make it so the name information comes from here (have to change client side too)
         opp_idx = 1 - player_idx
         stage_info = None
         # print("current game stage: ", self.stage) # this is for debugging
@@ -113,11 +114,12 @@ class Round:
     def get_round_status_for_player(self, p_idx: int) -> tuple:  # wonder if I should make a type for game status
         """ What it says on the tin.
         :param p_idx: the player index to get information for
-        :returns: long tuple. 0: whether the game has changed from the last update to this player (kinda broken rn),
-            1: current player's move (prev round, for printing purposes), 2: opponent's move (prev round, for printing
-            purposes, 3: current player's score, 4: opponent's score, 5: current round (broken-ish but not as much
-            as 0), 6: whether the game has ended, 7: whether the winner is the current player, 8: the stage of the game,
-            9: current player's name, 10: opponent's name, 11: whether this player has gone,
+        :returns: long tuple. 0: whether the game has changed from the last update to this player (no longer used),
+            1: current player's move (prev trick, for printing purposes), 2: opponent's move (prev trick, for printing
+            purposes, 3: current player's score, 4: opponent's score, 5: current trick (broken-ish but not as much
+            as 0), 6: whether the round has ended, 7: whether the winner  of round is the current player, 8: the stage
+            of the round (no longer used), 9: current player's name, 10: opponent's name,
+            11: whether this player has gone,
             12: whether both players have gone"""
         opp_idx = 1 - p_idx
         has_changed = self.notUpdated[p_idx]

@@ -6,15 +6,35 @@ import argparse
 import socket
 import numpy as np
 
-rps = ['r', 'p', 's']
+# flags
 user_input = True
 random_input = False
-algo_input = False # some algorithm i will write that i think works ok
+algo_input = False
+record_inputs = False
+algo_num = -1
 
+possible_algo_nums = [0, 1]
+rps = ['r', 'p', 's']
+
+# variables for if recording inputs
+self_moves = []
+opp_moves = []
+wins = []
+self_score = 0
+opp_score = 0
+
+# set up algo functions for determining actions for algos
+def algo0_action():
+    return 'r'
+def algo1_action():
+    return 's'
+
+
+algos = [algo0_action, algo1_action]
 
 # handlers for each stage - NO WHILE LOOPS HERE. TAKES ACTION BASED ON GAME STATUS - ASSUMES STATUS HAS CHANGED SINCE
 # LAST ACTION TAKEN. PRINTS OUTPUT AND RETURNS THE NEXT ACTION TO TAKE (CAN BE NONE)
-def stage0_handler(game_info: tuple):
+def stage0_handler(game_info: tuple) -> str:
     if debug:
         print("DEBUG: ", "game info received: ", game_info)
     action = None
@@ -36,35 +56,46 @@ def stage0_handler(game_info: tuple):
             print(game_info[9], "(you): ", game_info[3])
             print(game_info[10], "(other guy): ", game_info[4])
             print("==new trick==")
+            if record_inputs:
+                self_moves.append(game_info[1])
+                opp_moves.append(game_info[2])
+                wins.append(0) # todo: figure out what to append to wins (1 for win, -1 for loss, 0 for draw)
+                self_score = game_info[3]
+                opp_score = game_info[4]
+        # actions to take depending on game mode
         if user_input:
             action = input("stage 0 input (r/p/s): ")
             while action not in rps:
                 print("Move must be one of: r/p/s")
                 action = input("stage 0 input (r/p/s): ")
-        if random_input:
+        elif random_input:
             action = rps[np.random.randint(3)]
+        elif algo_input:
+            action = algos[algo_num]()
     if not game_info[12]:  # if both have not gone
         print("waiting on the other guy")
     return action
 
 
-def name_stage_handler(game_info: tuple):
+def name_stage_handler(game_info: tuple) -> str:
     if debug:
         print("DEBUG: ", "game info received: ", game_info)
     action = None
     if game_info[0]:  # if received from the current guy yet
         if debug:
             print("DEBUG: waiting on the other guy's name")
-        return None
+        return action
     else:  # not received from the current guy
         if user_input:
             action = input("type name: ")
         elif random_input:
-            action = "random boss"
+            action = "random chooser"
+        elif algo_input:
+            action = "algo " + str(algo_num)
         return action
 
 
-def another_round_handler(game_info: tuple):
+def another_round_handler(game_info: tuple) -> str:
     action = None
     if game_info[1] is not None:
         if not game_info[1]:
@@ -89,12 +120,12 @@ def main():
     # set up network
     n = Network()  # set up network
 
-    # print init message
+    # ensure connection, print init message
     init_message = n.init_message
-    print(init_message)
     if init_message is None:
         print("There is an issue with connecting! Ending now.")
         return
+    print(init_message)
 
     game_status = n.send(None)
     while True:
@@ -132,13 +163,14 @@ def main():
             break
     n.close()
 
+
 def dummy():
     print("hello world!")
 
 
 if __name__ == "__main__":
+    # set up and parse arguments
     parser = argparse.ArgumentParser(description='Client for rock paper scissors.')
-    # parser.add_argument('') # add arguments for flags for client
     parser.add_argument('--dummy', dest='main_func', action='store_const',  # 2 dashes is for long flag
                         const=dummy, default=main,
                         help='set client (default: interact with a human)')
@@ -146,16 +178,26 @@ if __name__ == "__main__":
                         help='print debugging output')
     parser.add_argument('--random', dest='random_flag', action=argparse.BooleanOptionalAction,
                         help='automatically choose randomly r,p, or s')
-    parser.add_argument('--algo', dest='algo_flag', action=argparse.BooleanOptionalAction,
-                        help='run algo erica wrote :)')
+    parser.add_argument('-a', '--algo', dest='algo_num', help='run indicated algo', type=int)
     args = parser.parse_args()
 
+    # set outut depending on arguments
     debug = args.debug_flag  # whether to print the debugging related messages or not
 
-    # set up bools for behavior from flags
+    # set game mode depending on arguments
     random_input = args.random_flag
-    algo_input = (not random_input) and args.algo_flag
+    algo_num = args.algo_num
+    algo_input = (not random_input) and (algo_num in possible_algo_nums)
     user_input = (not random_input) and (not algo_input)
 
-    print(debug)
+    # make it record inputs if using the algo i'm writing
+    record_inputs = algo_input
+
+    if debug:
+        print("algo input: ", algo_input)
+        print("random input: ", random_input)
+        print("algo num: ", algo_num)
+        print("algo num in possible: ", algo_num in possible_algo_nums)
+        print("not random: ", not random_input)
+
     args.main_func()
