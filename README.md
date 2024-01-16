@@ -10,10 +10,12 @@ use:
 
 some notes:
 
+- requires python 3.9 or above
 - there are some additional options for client.py (for running different bot version, displaying debug output, etc.)
 
 client.py options:
 
 - `--debug`: print some extra debugging outputs
 - `--random`: run a random bot instead of taking user input
-- `--algo`: run an algo for rps that I write :) (not implemented yet)
+- `--algo [algo_num]`: run an algo for rps that I write :)
+  - current options for algo_num: 1, 2

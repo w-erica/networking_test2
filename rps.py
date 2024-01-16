@@ -1,6 +1,23 @@
 from player import Player
 
 
+def determine_winner(move0: str, move1: str) -> int:
+    """ Determine winner of a single trick based on 2 moves
+    :param move0: move done by player 0 (presumably)
+    :param move1: move done by player 1
+    :returns: the index of the winning player"""
+    if move0 == move1:
+        return -1
+    order = ['r', 'p', 's']
+    if (move0 not in order) or (move1 not in order):
+        return -1
+    move0_idx = order.index(move0)
+    move1_idx = order.index(move1)
+    if (move0_idx - move1_idx == 1) or (move0_idx - move1_idx == -2):
+        return 0
+    else:
+        return 1
+
 class GameWrapper:
     def __init__(self):
         """ Wrap a round, to enable multiple games/rounds with one connection """
@@ -98,7 +115,7 @@ class Round:
 
     def play_round(self) -> None:
         """ Play a round of the game, depending on the existing moves recorded. """
-        winner = self.determine_winner(self.players[0].move, self.players[1].move)
+        winner = determine_winner(self.players[0].move, self.players[1].move)
         if winner != -1:
             self.players[winner].add_point()
             self.scores[winner] += 1
@@ -145,20 +162,3 @@ class Round:
             self.play_round()
         self.notUpdated = [True, True]
 
-
-    def determine_winner(self, move0: str, move1: str) -> int:
-        """ Determine winner of a single trick based on 2 moves
-        :param move0: move done by player 0 (presumably)
-        :param move1: move done by player 1
-        :returns: the index of the winning player"""
-        if move0 == move1:
-            return -1
-        order = ['r', 'p', 's']
-        if (move0 not in order) or (move1 not in order):
-            return -1
-        move0_idx = order.index(move0)
-        move1_idx = order.index(move1)
-        if (move0_idx - move1_idx == 1) or (move0_idx - move1_idx == -2):
-            return 0
-        else:
-            return 1

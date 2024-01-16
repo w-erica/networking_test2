@@ -5,6 +5,7 @@ import time
 import argparse
 import socket
 import numpy as np
+import algos
 
 # flags
 user_input = True
@@ -13,24 +14,12 @@ algo_input = False
 record_inputs = False
 algo_num = -1
 
-possible_algo_nums = [0, 1]
+possible_algo_nums = [0, 1] # possible import from algos module
 rps = ['r', 'p', 's']
 
-# variables for if recording inputs
-self_moves = []
-opp_moves = []
-wins = []
-self_score = 0
-opp_score = 0
+# thing for if using algos
+algo_wrapper = None
 
-# set up algo functions for determining actions for algos
-def algo0_action():
-    return 'r'
-def algo1_action():
-    return 's'
-
-
-algos = [algo0_action, algo1_action]
 
 # handlers for each stage - NO WHILE LOOPS HERE. TAKES ACTION BASED ON GAME STATUS - ASSUMES STATUS HAS CHANGED SINCE
 # LAST ACTION TAKEN. PRINTS OUTPUT AND RETURNS THE NEXT ACTION TO TAKE (CAN BE NONE)
@@ -47,6 +36,11 @@ def stage0_handler(game_info: tuple) -> str:
             print("you won!")
         else:
             print("you lost!")
+        if record_inputs:
+            # some file i/o thing here
+            pass
+        if algo_input:
+            algo_wrapper.update_moves(game_info[1], game_info[2])
     elif game_info[12]:  # if both have gone
         if game_info[5] > 0:
             print("trick ended, moves were:")
@@ -57,11 +51,10 @@ def stage0_handler(game_info: tuple) -> str:
             print(game_info[10], "(other guy): ", game_info[4])
             print("==new trick==")
             if record_inputs:
-                self_moves.append(game_info[1])
-                opp_moves.append(game_info[2])
-                wins.append(0) # todo: figure out what to append to wins (1 for win, -1 for loss, 0 for draw)
-                self_score = game_info[3] # how to fix this shadowing thing?
-                opp_score = game_info[4]
+                # file i/o
+                pass
+            if algo_input:
+                algo_wrapper.update_moves(game_info[1], game_info[2])
         # actions to take depending on game mode
         if user_input:
             action = input("stage 0 input (r/p/s): ")
@@ -71,7 +64,7 @@ def stage0_handler(game_info: tuple) -> str:
         elif random_input:
             action = rps[np.random.randint(3)]
         elif algo_input:
-            action = algos[algo_num]()
+            action = algo_wrapper.get_move()
     if not game_info[12]:  # if both have not gone
         print("waiting on the other guy")
     return action
@@ -162,6 +155,7 @@ def main():
             str(e)
             break
     n.close()
+    # close file i/o if needed
 
 
 def dummy():
@@ -178,20 +172,50 @@ if __name__ == "__main__":
                         help='print debugging output')
     parser.add_argument('--random', dest='random_flag', action=argparse.BooleanOptionalAction,
                         help='automatically choose randomly r,p, or s')
+    parser.add_argument('--record', dest='record_flag', action=argparse.BooleanOptionalAction,
+                        help='record inputs in a file!')
     parser.add_argument('-a', '--algo', dest='algo_num', help='run indicated algo', type=int)
+
     args = parser.parse_args()
 
-    # set outut depending on arguments
+    # set output depending on arguments
     debug = args.debug_flag  # whether to print the debugging related messages or not
 
     # set game mode depending on arguments
     random_input = args.random_flag
     algo_num = args.algo_num
     algo_input = (not random_input) and (algo_num in possible_algo_nums)
-    user_input = (not random_input) and (not algo_input)
 
     # make it record inputs if using the algo i'm writing
     record_inputs = algo_input
+    if not record_inputs:
+        record_inputs = args.record_flag
+
+    # option to update algo_num
+    if algo_num and algo_num not in possible_algo_nums:
+        print("Algo num input not valid (options are: ", possible_algo_nums, ")")
+        while True:
+            algo_num = input("New algo_num input (type QUIT to use user input instead): ")
+            if algo_num == "QUIT":
+                print("Using user input for this client!")
+                break
+            elif algo_num.isdigit() and int(algo_num) in possible_algo_nums:
+                print("Using algo ", algo_num)
+                algo_input = True
+                break
+
+    if algo_input:
+        # initialize algowrapper for the client with the right algo number
+        algo_wrapper = algos.AlgoWrapper(algo_num)
+
+    if record_inputs:
+        # write out time
+        # write out somewhere (maybe at bottom) the two names
+        # each move, write out: "my_move, their_move\n"
+        # todo: initialize file i/o?? for recording inputs? is there a way to do the file i/o with knowing the opponent's name?
+        pass
+
+    user_input = (not random_input) and (not algo_input)
 
     if debug:
         print("algo input: ", algo_input)
