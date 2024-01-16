@@ -60,7 +60,7 @@ def stage0_handler(game_info: tuple) -> str:
                 self_moves.append(game_info[1])
                 opp_moves.append(game_info[2])
                 wins.append(0) # todo: figure out what to append to wins (1 for win, -1 for loss, 0 for draw)
-                self_score = game_info[3]
+                self_score = game_info[3] # how to fix this shadowing thing?
                 opp_score = game_info[4]
         # actions to take depending on game mode
         if user_input:

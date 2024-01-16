@@ -8,7 +8,7 @@ from typing import Callable
 from rps import *
 
 # setup according to the server and port
-server = "192.168.0.208" #"127.0.0.1" #   # "192.168.86.38"
+server = "192.168.86.46" # "192.168.0.208" #"127.0.0.1" #   # "192.168.86.38"
 port = 5555
 
 # setup connection
