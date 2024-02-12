@@ -18,7 +18,9 @@ def determine_winner(move0: str, move1: str) -> int:
     else:
         return 1
 
+
 class GameWrapper:
+
     def __init__(self):
         """ Wrap a round, to enable multiple games/rounds with one connection """
         self.round = Round()  # the game being wrapped
@@ -145,12 +147,10 @@ class Round:
             (self.winner == p_idx), self.stage, self.names[p_idx], self.names[opp_idx], \
             self.players[p_idx].hasGone, self.bothGone
 
-
     def mark_updated(self, p_idx: int):
         """ Mark player as updated (with latest information) """
         self.notUpdated[p_idx] = False
         return
-
 
     def update_round(self, move: str, p_idx: int) -> None:
         """ Update round based on move done by player
