@@ -1,0 +1,4 @@
+- for the agent:
+  - can make it a classifier over the last whatever long previous length of sequences (easier)
+    - can try to figure out if the person (me) considers the other side's side or not
+  - or can try LSTM 
